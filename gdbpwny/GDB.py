@@ -1,14 +1,50 @@
 from subprocess import Popen, PIPE, STDOUT
 from sys import stdin, stdout, exit
 from binascii import unhexlify
+from enum import Enum
 from .Breakpoint import Breakpoint
 import re
+
+
+class Signal(Enum):
+    SIGHUP    = 1
+    SIGINT    = 2
+    SIGQUIT   = 3
+    SIGILL    = 4
+    SIGTRAP   = 5
+    SIGABRT   = 6
+    SIGBUS    = 7
+    SIGFPE    = 8
+    SIGKILL   = 9
+    SIGUSR1   = 10
+    SIGSEGV   = 11
+    SIGUSR2   = 12
+    SIGPIPE   = 13
+    SIGALRM   = 14
+    SIGTERM   = 15
+    SIGSTKFLT = 16
+    SIGCHLD   = 17
+    SIGCONT   = 18
+    SIGSTOP   = 19
+    SIGTSTP   = 20
+    SIGTTIN   = 21
+    SIGTTOU   = 22
+    SIGURG    = 23
+    SIGXCPU   = 24
+    SIGXFSZ   = 25
+    SIGVTALRM = 26
+    SIGPROF   = 27
+    SIGWINCH  = 28
+    SIGIO     = 29
+    SIGPWR    = 30
+
 
 class GDB:
     def __init__(self, program=None, args=[], verbose=0):
         self.prompt = "(gdb) "
         self.verbose = verbose
         self.breakpoints = {}
+        self.signal_callbacks = {}
         self.proc = Popen(["gdb", "-n", "-q"], bufsize=0, universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         self.read_until_prompt()
         if program: self.file(program)
@@ -30,6 +66,13 @@ class GDB:
                     function_information = match.group(3)
                     breakpoint = self.get_breakpoint(breakpoint_number)
                     breakpoint.hit(address, function_information)
+            if line.startswith("Program received signal"):
+                match = re.compile("Program received signal ([A-Z]+), .*?.\n0x([\da-f]+) in ([^\n]+)\n", re.M).search(output)
+                if match:
+                    signal = Signal[match.group(1)]
+                    address = hex(int(match.group(2), 16))
+                    function_information = match.group(3)
+                    self.signal_callbacks.get(signal)(self, signal, address, function_information)
 
     def read_until_prompt(self):
         read_until_prompt = self.read_until(self.prompt)
@@ -56,6 +99,9 @@ class GDB:
 
     def get_breakpoint(self, number):
         return self.breakpoints.get(number)
+
+    def set_signal_callback(self, signal, callback):
+        self.signal_callbacks[signal] = callback
 
     def gdb_ignore(self, breakpoint, count=0):
         return self.execute("ignore {} {}".format(breakpoint, count))
