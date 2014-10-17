@@ -40,15 +40,17 @@ class Signal(Enum):
 
 
 class GDB:
-    def __init__(self, program=None, args=[], verbose=0):
+    def __init__(self, program=None, args=[], verbose=0, pending_breakpoints=True):
         self.prompt = "(gdb) "
         self.verbose = verbose
         self.breakpoints = {}
         self.signal_callbacks = {}
+        self.pending_breakpoints = pending_breakpoints
         self.proc = Popen(["gdb", "-n", "-q"], bufsize=0, universal_newlines=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         self.read_until_prompt()
         if program: self.file(program)
         if args: self.gdb_set_args(args)
+        if pending_breakpoints: self.execute("set breakpoint pending on")
 
     def read_until(self, search):
         input_buffer = ""
@@ -88,6 +90,7 @@ class GDB:
         if self.verbose >= 2: print("{}\n".format(command), end="")
         return self.read_until_prompt()
 
+<<<<<<< HEAD
     def breakpoint(self, expression, callback=None):
         output = self.execute("b {}".format(expression))
         match = re.compile('Breakpoint (\d+) at 0x([\da-f]+)').search(output)
@@ -96,6 +99,27 @@ class GDB:
         b = Breakpoint(self, bpnumber, address, callback)
         self.breakpoints[bpnumber] = b
         return b
+=======
+    def breakpoint(self, expression):
+        breakpoint_number = None
+        address = None
+        breakpoint = None
+        output = self.execute("b {}".format(expression))
+        match = re.compile('Breakpoint (\d+) at 0x([\da-f]+)').search(output)
+        if match:
+            breakpoint_number = match.group(1)
+            address = hex(int(match.group(2), 16))
+        else:
+            if self.pending_breakpoints:
+                match = re.compile("Breakpoint (\d+) (.*?) pending.").search(output)
+                if match:
+                    breakpoint_number = match.group(1)
+        if breakpoint_number:
+            breakpoint = Breakpoint(self, breakpoint_number, address)
+        else:
+            raise UndefinedReferenceException(output.splitlines()[0])
+        return breakpoint
+>>>>>>> feature/pending_breakpoints
 
     def get_breakpoint(self, number):
         return self.breakpoints.get(number)
@@ -179,3 +203,7 @@ class GDB:
             except KeyboardInterrupt:
                 self.read_until_prompt()
         self.verbose = verbose_old
+
+
+class UndefinedReferenceException(Exception):
+    pass
