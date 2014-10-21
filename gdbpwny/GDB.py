@@ -90,17 +90,7 @@ class GDB:
         if self.verbose >= 2: print("{}\n".format(command), end="")
         return self.read_until_prompt()
 
-<<<<<<< HEAD
     def breakpoint(self, expression, callback=None):
-        output = self.execute("b {}".format(expression))
-        match = re.compile('Breakpoint (\d+) at 0x([\da-f]+)').search(output)
-        bpnumber = match.group(1)
-        address = hex(int(match.group(2), 16))
-        b = Breakpoint(self, bpnumber, address, callback)
-        self.breakpoints[bpnumber] = b
-        return b
-=======
-    def breakpoint(self, expression):
         breakpoint_number = None
         address = None
         breakpoint = None
@@ -115,11 +105,11 @@ class GDB:
                 if match:
                     breakpoint_number = match.group(1)
         if breakpoint_number:
-            breakpoint = Breakpoint(self, breakpoint_number, address)
+            breakpoint = Breakpoint(self, breakpoint_number, address, callback)
+            self.breakpoints[breakpoint_number] = breakpoint
         else:
             raise UndefinedReferenceException(output.splitlines()[0])
         return breakpoint
->>>>>>> feature/pending_breakpoints
 
     def get_breakpoint(self, number):
         return self.breakpoints.get(number)
