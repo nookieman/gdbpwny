@@ -47,3 +47,25 @@ class Address(bytearray):
 
     def __str__(self):
         return hexlify(self).decode('ascii')
+
+
+class MemorySegment(bytearray):
+    def __init__(self, start_address, byte_array=b""):
+        self.start_address = start_address
+        super().__init__(byte_array)
+
+    def find_sequence(self, sequence):
+        sequence_address = None
+        offset = self.find(sequence)
+        if not offset < 0:
+            a1 = Address(self.start_address)
+            a2 = Address(offset)
+            sequence_address = a1 + a2
+        return sequence_address
+
+    def get_memory(self, address, length=0):
+        offset = self.start_address - address
+        assert(offset > 0)                   #TODO: add reasonable exceptions
+        assert(offset + length <= len(self)) #      for these cases
+        memory_bytes = self[offset:] if length == 0 else self[offset:offset+length]
+        return MemorySegment(address, memory_bytes)
