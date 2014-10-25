@@ -2,6 +2,7 @@ from subprocess import Popen, PIPE, STDOUT
 from sys import stdin, stdout, exit
 from binascii import unhexlify
 from .Breakpoint import Breakpoint
+from .Memory import Address
 from .Signal import Signal
 from .Register import Register, RegisterSet
 import re
@@ -33,7 +34,7 @@ class GDB(object):
                 if not match:
                     continue
                 breakpoint_number = match.group(1)
-                address = hex(int(match.group(2), 16))
+                address = Address(int(match.group(2), 16))
                 function_information = match.group(3)
                 breakpoint = self.get_breakpoint(breakpoint_number)
                 breakpoint.hit(address, function_information)
@@ -42,7 +43,7 @@ class GDB(object):
                 if not match:
                     continue
                 signal = Signal[match.group(1)]
-                address = hex(int(match.group(2), 16))
+                address = Address(int(match.group(2), 16))
                 function_information = match.group(3)
                 self.signal_callbacks.get(signal)(self, signal, address, function_information)
 
@@ -68,7 +69,7 @@ class GDB(object):
         match = re.compile('Breakpoint (\d+) at 0x([\da-f]+)').search(output)
         if match:
             breakpoint_number = match.group(1)
-            address = hex(int(match.group(2), 16))
+            address = Address(int(match.group(2), 16))
         elif self.pending_breakpoints:
             match = re.compile("Breakpoint (\d+) (.*?) pending.").search(output)
             if not match:
