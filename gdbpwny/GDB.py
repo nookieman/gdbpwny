@@ -4,10 +4,11 @@ from binascii import unhexlify
 from enum import Enum
 from .Breakpoint import Breakpoint
 from .Signal import Signal
+from .Register import Register, RegisterSet
 import re
 
 
-class GDB:
+class GDB(object):
     def __init__(self, program=None, args=[], verbose=0, pending_breakpoints=True):
         self.prompt = "(gdb) "
         self.verbose = verbose
@@ -37,8 +38,7 @@ class GDB:
                 function_information = match.group(3)
                 breakpoint = self.get_breakpoint(breakpoint_number)
                 breakpoint.hit(address, function_information)
-                continue
-            if line.startswith("Program received signal"):
+            elif line.startswith("Program received signal"):
                 match = re.compile("Program received signal ([A-Z]+), .*?.\n0x([\da-f]+) in ([^\n]+)\n", re.M).search(output)
                 if not match:
                     continue
@@ -46,7 +46,6 @@ class GDB:
                 address = hex(int(match.group(2), 16))
                 function_information = match.group(3)
                 self.signal_callbacks.get(signal)(self, signal, address, function_information)
-                continue
 
     def read_until_prompt(self):
         read_until_prompt = self.read_until(self.prompt)
@@ -179,6 +178,17 @@ class GDB:
         if not output.startswith("The target architecture is assumed to be"):
             raise UndefinedArchitectureException(output.splitlines()[0])
 
+    def get_registers(self):
+        output = self.execute("info registers")
+        register_set = RegisterSet()
+        for line in output.splitlines():
+            match = re.compile("(\S+)\s+0x([a-f\d]+)\s").search(line)
+            if match:
+                register_name = match.group(1)
+                register_value = hex(int(match.group(2), 16))
+                register_set[register_name] = Register(register_name, register_value)
+        return register_set
+
 
 class UndefinedArchitectureException(Exception):
     pass
@@ -186,3 +196,4 @@ class UndefinedArchitectureException(Exception):
 
 class UndefinedReferenceException(Exception):
     pass
+
