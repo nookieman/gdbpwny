@@ -5,6 +5,7 @@ from .Breakpoint import Breakpoint
 from .Memory import Address, MemorySegment
 from .Signal import Signal
 from .Register import Register, RegisterSet
+from .SyntaxStyle import SyntaxStyle
 import re
 
 
@@ -20,6 +21,7 @@ class GDB(object):
         if program: self.file(program)
         if args: self.gdb_set_args(args)
         if pending_breakpoints: self.execute("set breakpoint pending on")
+        self.execute("set height 0")
 
     def read_until(self, search):
         input_buffer = ""
@@ -202,6 +204,21 @@ class GDB(object):
                     memory_bytes.append(byte)
         assert(len(memory_bytes) == length)
         return memory_bytes
+
+    def enable_logging(self, filename, overwrite=True):
+        self.disable_logging()
+        self.execute("set logging file {}".format(filename))
+        self.execute("set logging overwrite {}".format("on" if overwrite else "off"))
+        self.execute("set logging redirect off")
+        return self.execute("set logging on")
+
+    def disable_logging(self):
+        return self.execute("set logging off")
+
+    def set_disassembly_flavor(self, flavor):
+        if type(flavor) is SyntaxStyle:
+            flavor = flavor.value
+        return self.execute("set disassembly-flavor {}".format(flavor))
 
 
 class UndefinedArchitectureException(Exception):
