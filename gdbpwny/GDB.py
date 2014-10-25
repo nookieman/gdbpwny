@@ -3,40 +3,8 @@ from sys import stdin, stdout, exit
 from binascii import unhexlify
 from enum import Enum
 from .Breakpoint import Breakpoint
+from .Signal import Signal
 import re
-
-
-class Signal(Enum):
-    SIGHUP    = 1
-    SIGINT    = 2
-    SIGQUIT   = 3
-    SIGILL    = 4
-    SIGTRAP   = 5
-    SIGABRT   = 6
-    SIGBUS    = 7
-    SIGFPE    = 8
-    SIGKILL   = 9
-    SIGUSR1   = 10
-    SIGSEGV   = 11
-    SIGUSR2   = 12
-    SIGPIPE   = 13
-    SIGALRM   = 14
-    SIGTERM   = 15
-    SIGSTKFLT = 16
-    SIGCHLD   = 17
-    SIGCONT   = 18
-    SIGSTOP   = 19
-    SIGTSTP   = 20
-    SIGTTIN   = 21
-    SIGTTOU   = 22
-    SIGURG    = 23
-    SIGXCPU   = 24
-    SIGXFSZ   = 25
-    SIGVTALRM = 26
-    SIGPROF   = 27
-    SIGWINCH  = 28
-    SIGIO     = 29
-    SIGPWR    = 30
 
 
 class GDB:
@@ -62,19 +30,23 @@ class GDB:
         for line in output.splitlines():
             if line.startswith("Breakpoint"):
                 match = re.compile("Breakpoint (\d+), 0x([\da-f]+) in (.*)").search(line)
-                if match:
-                    breakpoint_number = match.group(1)
-                    address = hex(int(match.group(2), 16))
-                    function_information = match.group(3)
-                    breakpoint = self.get_breakpoint(breakpoint_number)
-                    breakpoint.hit(address, function_information)
+                if not match:
+                    continue
+                breakpoint_number = match.group(1)
+                address = hex(int(match.group(2), 16))
+                function_information = match.group(3)
+                breakpoint = self.get_breakpoint(breakpoint_number)
+                breakpoint.hit(address, function_information)
+                continue
             if line.startswith("Program received signal"):
                 match = re.compile("Program received signal ([A-Z]+), .*?.\n0x([\da-f]+) in ([^\n]+)\n", re.M).search(output)
-                if match:
-                    signal = Signal[match.group(1)]
-                    address = hex(int(match.group(2), 16))
-                    function_information = match.group(3)
-                    self.signal_callbacks.get(signal)(self, signal, address, function_information)
+                if not match:
+                    continue
+                signal = Signal[match.group(1)]
+                address = hex(int(match.group(2), 16))
+                function_information = match.group(3)
+                self.signal_callbacks.get(signal)(self, signal, address, function_information)
+                continue
 
     def read_until_prompt(self):
         read_until_prompt = self.read_until(self.prompt)
@@ -99,16 +71,15 @@ class GDB:
         if match:
             breakpoint_number = match.group(1)
             address = hex(int(match.group(2), 16))
-        else:
-            if self.pending_breakpoints:
-                match = re.compile("Breakpoint (\d+) (.*?) pending.").search(output)
-                if match:
-                    breakpoint_number = match.group(1)
-        if breakpoint_number:
-            breakpoint = Breakpoint(self, breakpoint_number, address, callback)
-            self.breakpoints[breakpoint_number] = breakpoint
+        elif self.pending_breakpoints:
+            match = re.compile("Breakpoint (\d+) (.*?) pending.").search(output)
+            if not match:
+                raise UndefinedReferenceException(output.splitlines()[0])
+            breakpoint_number = match.group(1)
         else:
             raise UndefinedReferenceException(output.splitlines()[0])
+        breakpoint = Breakpoint(self, breakpoint_number, address, callback)
+        self.breakpoints[breakpoint_number] = breakpoint
         return breakpoint
 
     def get_breakpoint(self, number):
@@ -150,8 +121,8 @@ class GDB:
     def print(self, expression):
         return self.execute("p {}".format(expression))
 
-    def disassemble(self):
-        return self.execute("disas")
+    def disassemble(self, target=""):
+        return self.execute("disas {}".format(target))
 
     def get_stack(self, offset, raw=False):
         output = self.execute("x/x $ebp-{}".format(offset))
@@ -215,4 +186,3 @@ class UndefinedArchitectureException(Exception):
 
 class UndefinedReferenceException(Exception):
     pass
-
