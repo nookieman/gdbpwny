@@ -1,9 +1,13 @@
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 
 class Address(bytearray):
     def __init__(self, address=None):
         if isinstance(address, int):
             address = self.int2bytes(address)
+        if isinstance(address, str):
+            if address.startswith("0x"):
+                address = address[2:]
+            address = unhexlify(address)
         super().__init__(address)
 
     @staticmethod
