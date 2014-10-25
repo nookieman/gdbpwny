@@ -1,7 +1,6 @@
 from subprocess import Popen, PIPE, STDOUT
 from sys import stdin, stdout, exit
 from binascii import unhexlify
-from enum import Enum
 from .Breakpoint import Breakpoint
 from .Signal import Signal
 from .Register import Register, RegisterSet
