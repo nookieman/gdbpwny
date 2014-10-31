@@ -2,6 +2,7 @@ from subprocess import Popen, PIPE, STDOUT
 from sys import stdin, stdout, exit
 from binascii import unhexlify
 from .Breakpoint import Breakpoint
+from .exceptions import UndefinedArchitectureException, UndefinedReferenceException
 from .Signal import Signal
 from .Register import Register, RegisterSet
 from .SyntaxStyle import SyntaxStyle
@@ -210,11 +211,4 @@ class GDB(object):
             flavor = flavor.value
         return self.execute("set disassembly-flavor {}".format(flavor))
 
-
-class UndefinedArchitectureException(Exception):
-    pass
-
-
-class UndefinedReferenceException(Exception):
-    pass
 
