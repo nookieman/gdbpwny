@@ -5,3 +5,7 @@ class UndefinedArchitectureException(Exception):
 class UndefinedReferenceException(Exception):
     pass
 
+
+class InvalidStateException(Exception):
+    pass
+
