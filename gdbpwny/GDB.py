@@ -5,6 +5,7 @@ from .Breakpoint import Breakpoint
 from .exceptions import UndefinedArchitectureException, UndefinedReferenceException
 from .Signal import Signal
 from .Register import Register, RegisterSet
+from .StdinHandler import StdinHandler
 from .SyntaxStyle import SyntaxStyle
 import re
 
@@ -22,6 +23,7 @@ class GDB(object):
         if args: self.gdb_set_args(args)
         if pending_breakpoints: self.execute("set breakpoint pending on")
         self.execute("set height 0")
+        self.stdin_handler = StdinHandler()
 
     def read_until(self, search):
         input_buffer = ""
@@ -110,7 +112,7 @@ class GDB(object):
         return self.execute("file {}".format(program))
 
     def run(self, args=[]):
-        return self.execute("run {}".format(" ".join(args)))
+        return self.execute("run {} < {}".format(" ".join(args), self.stdin_handler.get_path()))
 
     def start(self, args=[]):
         return self.execute("start {}".format(" ".join(args)))
@@ -211,4 +213,6 @@ class GDB(object):
             flavor = flavor.value
         return self.execute("set disassembly-flavor {}".format(flavor))
 
+    def write_stdin(self, stdin_string, blocking=False):
+        self.stdin_handler.write(stdin_string, blocking)
 
