@@ -196,6 +196,20 @@ class GDB(object):
                 register_set[register_name] = Register(register_name, register_value)
         return register_set
 
+    def get_memory(self, address, length):
+        assert(isinstance(length, int))
+        assert(isinstance(address, Address))
+        output = self.execute("x/{:d}bx 0x{}".format(length, str(address)))
+        memory_bytes = MemorySegment(address)
+        for line in output.splitlines():
+            match = re.compile("0x[a-f\d]+\s*(?:\S+)?:\s+((?:\s*0x[a-f\d]{2})+)").search(line)
+            if match:
+                for group in match.group(1).split():
+                    byte = int(group, 16)
+                    memory_bytes.append(byte)
+        assert(len(memory_bytes) == length)
+        return memory_bytes
+
     def enable_logging(self, filename, overwrite=True):
         self.disable_logging()
         self.execute("set logging file {}".format(filename))
