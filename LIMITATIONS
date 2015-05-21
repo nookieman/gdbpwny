@@ -1,0 +1,1 @@
+stdin usage does not work with set_args currently, as it has to be started with implicitly set run arguments
